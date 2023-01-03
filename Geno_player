@@ -1,0 +1,174 @@
+#! /usr/bin/env python3
+import time, os
+from pygame import mixer
+from tkinter import *
+from tkinter.filedialog import *
+
+cache = {}
+
+#Custom Check Button Class for dynamic color change on Hover
+class Custom_button(Button):
+    def __init__(self,master,**kargs):
+        super().__init__(master=master,**kargs,relief=FLAT)
+        self.defaultbg = self['bg']
+        self.defaultfg = self['fg']
+        self.bind('<Enter>',self.on_enter)
+        self.bind('<Leave>',self.on_leave)
+    
+    def on_enter(self,e):
+        self['bg'] = self['activebackground']
+        self['fg'] = self['activeforeground']
+    
+    def on_leave(self,e):
+        self['bg'] = self.defaultbg
+        self['fg'] = self.defaultfg
+
+def addsong(field):
+    file = askopenfile(initialdir="Music/",title="Choose a song", )
+    if file and os.path.basename(file.name).split('.')[0] not in cache :
+        cache[os.path.basename(file.name).split('.')[0]] = file.name
+        field.insert(END,' •  '+os.path.basename(file.name).split('.')[0])
+def addsongs(field):
+    temp = askopenfiles(initialdir="Music/",title="Choose a song", )
+    for file in temp:
+        if os.path.basename(file.name).split('.')[0] not in cache:
+            cache[os.path.basename(file.name).split('.')[0]] = file.name
+            field.insert(END,' •  '+os.path.basename(file.name).split('.')[0])
+def removesong(field):
+    try:
+        idx = (field.curselection()[0])
+        curr = field.get(idx)
+    except: 
+        return
+    field.delete(idx)
+    del cache[curr[4:]]
+    print(cache)
+
+def play(field,current):
+    if not (field.curselection()):
+        field.selection_set(0)
+        field.activate(0)
+    curr = field.get(ACTIVE)
+    if curr:    
+        path = cache[curr[4:]]
+        mixer.music.load(path)
+        mixer.music.play()
+        current.config(text= curr[4:])
+
+def stop(b):
+    mixer.music.pause()
+    b.config(command = lambda: resume(b))
+
+def resume(b):
+    mixer.music.unpause()
+    b.config(command = lambda: stop(b))
+def previous(field,current):
+    if not (field.curselection()):
+        play(field,current)
+    else:
+        p = field.curselection()[0]-1
+        temp = field.get(p)
+        print(temp)
+        if not temp: 
+            play(field,current)
+            return
+        temp = cache[temp[4:]]
+        mixer.music.load(temp)
+        mixer.music.play()
+        field.selection_clear(0,END)
+        field.activate(p)
+        field.selection_set(p)
+        current.config(text = temp[4:])
+def next_up(field,current):
+    if not (field.curselection()):
+        play(field,current)
+    else:
+        p = field.curselection()[0]+1
+        temp = field.get(p)
+        if not temp: 
+            play(field,current)
+            return
+        temp = cache[temp[4:]]
+        mixer.music.load(temp)
+        mixer.music.play()
+        field.selection_clear(0,END)
+        field.activate(p)
+        field.selection_set(p)
+        current.config(text = temp[4:])
+def run():
+    #main window
+    root = Tk()
+    root.config(background= '#030f29' )
+    root.geometry('600x600')
+    root.title('Geno Player')
+    root.resizable(0,0)
+    mixer.init()
+
+    #bottom bar
+    bottom_bar = Frame(bg = '#03081a',height=30)
+    bottom_bar.pack(side=BOTTOM,fill=X)
+
+    #bottom bar Buttons
+    current = Label(master = bottom_bar,bg = '#03081a',fg='white',font = ('',11))
+    current.config(text = '---')
+    
+    play_button = Custom_button(master = bottom_bar,bg = '#03081a',fg='white',font = ('',15),activebackground='#069dc7',activeforeground='#03081a')
+    play_button.config(text = '▶️',bd = 0,highlightthickness=0)
+    play_button.pack(side = LEFT,padx=(10,0),pady=(0,0))
+    play_button.config(command = lambda: play(music_window,current))
+
+    pause_button = Custom_button(master = bottom_bar,bg = '#03081a',fg='white',font = ('',15),activebackground='#069dc7',activeforeground='#03081a')
+    pause_button.config(text = "■",bd = 0,highlightthickness=0)
+    pause_button.pack(side = LEFT,padx=(10,0),pady=(0,0))
+    pause_button.config(command = lambda: stop(pause_button))
+
+    prev = Custom_button(master = bottom_bar,bg = '#03081a',fg='white',font = ('',15),activebackground='#069dc7',activeforeground='#03081a')
+    prev.config(text = "\U000000AB",bd = 0,highlightthickness=0)
+    prev.pack(side = LEFT,padx=(10,0),pady=(0,0))
+    prev.config(command = lambda: previous(music_window,current))
+
+    nxt = Custom_button(master = bottom_bar,bg = '#03081a',fg='white',font = ('',15),activebackground='#069dc7',activeforeground='#03081a')
+    nxt.config(text = "\U000000BB",bd = 0,highlightthickness=0)
+    nxt.pack(side = LEFT,padx=(10,0),pady=(0,0))
+    nxt.config(command = lambda: next_up(music_window,current))
+
+    playing = Label(master = bottom_bar,bg = '#03081a',fg='white',font = ('',11))
+    playing.config(text = 'Playing :')
+    playing.pack(side = LEFT,padx=(15,0))
+
+    current.pack(side = LEFT,padx=(15,0))
+
+
+    
+    #top bar
+    top_bar = Frame(bg = '#03081a',height=40)
+    top_bar.pack(side=TOP,fill=X)
+
+    music_window= Listbox(root,selectmode=SINGLE,bd = 0,highlightthickness=0 ,bg='#030f29',fg="white",font=('',15),height = 21,selectbackground="#112045",selectforeground="white")
+    music_window.config(activestyle=NONE)
+    music_window.pack(side=TOP,fill=BOTH)
+
+    #top bar buttons
+    button1 = Custom_button(master = top_bar,bg = '#03081a',fg='white',font = ('',7),activebackground='#069dc7',activeforeground='#03081a')
+    button1.config(text = 'Add Song',highlightbackground='#44d5fc',highlightthickness=1,highlightcolor='#44d5fc')
+    button1.pack(side = LEFT,padx=(10,0),pady=(5,5))
+    button1.config(command=lambda: addsong(music_window))
+
+    button2 = Custom_button(master = top_bar,bg = '#03081a',fg='white',font = ('',7),activebackground='#069dc7',activeforeground='#03081a')
+    button2.config(text = 'Add Songs',highlightbackground='#44d5fc',highlightthickness=1,highlightcolor='#44d5fc')
+    button2.pack(side = LEFT,padx=(10,0),pady=(5,5))
+    button2.config(command=lambda: addsongs(music_window))
+
+    button3 = Custom_button(master = top_bar,bg = '#03081a',fg='white',font = ('',7),activebackground='#069dc7',activeforeground='#03081a')
+    button3.config(text = 'remove Song',highlightbackground='#44d5fc',highlightthickness=1,highlightcolor='#44d5fc')
+    button3.pack(side = LEFT,padx=(10,0),pady=(5,5))
+    button3.config(command=lambda: removesong(music_window))
+    
+
+
+
+    root.mainloop()
+
+
+if __name__ == '__main__':
+    run()
